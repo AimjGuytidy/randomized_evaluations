@@ -1,0 +1,651 @@
+{smcl}
+{txt}{...}
+{p}{bf}
+{ul:POWER CALCULATIONS}{break}
+Created by John Tebes and Rohit Naimpally (2016) {break}
+Edited by Sabhya Gupta and Evan Williams (2021) {break}
+Last edited by Evan Williams, 28 October 2021 {break}
+{txt}{sf}{ul off}{...}
+
+{hline}{marker controls_part2}
+
+{pstd}{bf:Why are power calculations important?}
+	
+{hline}
+
+{p}
+Statistical power refers to the probability that we will detect an effect size if the program truly has an effect.
+Power calculations help us determine the minimum sample size to have a high power, i.e., high probability to detect the effect if it exists. 
+They can also be used to determine the minimum effect our study can detect in the case of a fixed sample size, also 
+referred to as Minimum Detectable Effect or MDE.
+
+{p}
+Power influences many design aspects, including what research questions to pursue, how many treatment arms to employ, and even more fundamentally, whether or 
+not to proceed with a potential research project. For example, it may be that a remedial education program boosts tests scores by 20 percent when 
+comparing treatment and control groups, but due to limited power, the RCT is unable to detect this true effect (with 95% confidence). 
+However, we can estimate whether a given design is likely to be able to detect a reasonable effect size ex-ante, allowing us to 
+tweak the design as needed,  manage partner expectations, and make the best use of limited resources. 
+
+
+{p}
+This exercise is written in SMCL (pronounced "smickle"), Stata's output language. 
+Your working directory needs to be set correctly to the directory using {cmd:cd}. 
+Now, {bf:{ul:set your working directory to the directory that contains this SMCL file and the baroda_0102_1obs.dta}}
+If you opened this file by double-clicking on it, you probably don't need to change your working directory. 
+
+{p}The fact that we're using SMCL means that we can run commands from within the file. For example:
+
+{p}{bf:{stata `"display "Hello world!""'}}{p_end}
+
+{p}Commands that are one line long are blue and clickable.
+
+{p}Further, you will see links like {help contents:this one} that take you to help files, locations in a Stata manual, or even a webpage. 
+These links work like those in an Internet browser,so you can always press the Back button to return to your exact previous location. 
+Further, if you right-click on a link, you have the option to open it in a new tab or window. 
+
+{hline}{marker checklist}
+
+{pstd}{bf:Questions to consider before running power calculations... }
+	
+{hline}
+
+{p}
+- What is the main specification (e.g. regression) we plan to run?
+[It doesn't have to be fully baked, but the more "baked" it is, the more precise we can make your power estimates.]
+
+- Is the randomization at the unit of assignment or across clusters?
+
+- What do we expect to be the mean of the outcome in the control group?
+
+- How about the standard deviation (SD) of the outcome in control group? 
+
+- What sample sizes are feasible?
+
+- What effect sizes could the intervention reasonably cause?
+
+- What is the smallest, cost-effective effect size that we are interested in? 
+[We often arrive at a reasonable answer to this question through discussions with partner organizations and literature reviews.]
+
+{hline}
+
+{pstd}{bf:Table of contents}
+
+{hline}
+
+
+{p}{view "Power_exercise.smcl##simple":1. Basic Parametric Example}{break}
+
+{p}{view "Power_exercise.smcl##intuition":2. Relationship between power and its components} {break}
+
+{p}{view "Power_exercise.smcl##controls":3. Parametric power calculation with controls} {break}
+
+{p}{view "Power_exercise.smcl##partial":4. Parametric power calculation with partial take-up} {break} 
+
+{p}{view "Power_exercise.smcl##summary":5. Overview of how MDE and sample size change as we add covariates and take-up changes} {break}
+ 
+{p}{view "Power_exercise.smcl##cluster":6. Parametric power calculation for cluster RCTs} {break}
+
+{p}{view "Power_exercise.smcl##resources":7. Resources} {break}
+
+{p} {view "Power_exercise.smcl##answers":8. Answer Key} {break}
+
+
+{hline}
+
+{pstd}{bf: 0. Setup}
+
+{hline}
+
+
+{...}
+{p2colset 5 84 0 0}{...}
+{p}{c TLC}{hline 78}{c TRC}{p_end}
+{p2col:{c |} {it:IMPORTANT NOTES!}}{c |}{p_end}
+{p}{c LT}{hline 78}{c RT}{p_end}
+{p2col:{c |} To run the Stata sections, we will need Stata (version 13 preferably)}{c |}{p_end}
+
+{p2col:{c |} This section loads the data that will be used in later sections,}{c |}{p_end}
+{p2col:{c |} so it's important to run all the Stata code in this section before}{c |}{p_end}
+{p2col:{c |} proceeding.}{c |}{p_end}
+{p2col:{c |} }{c |}{p_end}
+{p}{c BLC}{hline 78}{c BRC}{p_end}
+{p2colreset}{...}
+
+{phang}{bf:{stata clear all}}{p_end}
+{phang}{bf:{stata set more off}}{p_end}
+{phang}{bf:{stata version 13}}{p_end}
+
+{p}
+Let's load the Balsakhi dataset. We'll use this dataset to estimate the baseline
+mean. 
+
+{phang}{bf:{stata use "baroda_0102_1obs.dta",clear}}{p_end}
+
+{hline}{marker simple}
+
+{pstd}{bf: 1. Basic Parametric Example}
+
+{hline}
+
+{p}
+{bf: Sample size given the minimum effect size}
+
+{p}
+One common use of the power calculations is to calculate the minimum required sample size for 
+a given effect size, baseline conditions and research design. 
+
+{p}For all parametric power calculations, we'll assume a conventional 
+{cmd:95}% confidence interval and {cmd:80}% power. 
+
+{phang}{bf:{stata global power = 0.8}}{p_end}
+{phang}{bf:{stata global alpha= 0.05}}{p_end}
+
+{p}Note: Since power calculations are usually done prior to a study, we often use baseline/pilot data on the study population, or government statistics for a comparable
+population, to get an approximate for the mean and the standard deviation outcome in the control group.
+
+{p}What do we expect the mean of the outcome to be in the control group after the experiment?
+
+This can be approximated using baseline data
+
+{phang}{bf:{stata sum pre_totnorm}}{p_end}
+{phang}{bf:{stata global baseline_mean = r(mean)}}{p_end}
+{phang}{bf:{stata global baseline_sd = r(sd)}}{p_end}
+
+[If your outcome is binary, we can estimate the standard deviation by assuming that the Bernoulli random variable takes a binomial distribution.]
+
+
+{p}
+Let's say, based on other studies and cost-effectiveness analysis, that we expect an effect size of a third of the standard deviation. Now let's calculate the sample size required to detect this effect size, given our other parameters.
+
+{phang}{bf:{stata global effect = $baseline_sd/3}}{p_end}
+{phang}{bf:{stata global treat = $baseline_mean + $effect}}{p_end}
+
+The minimum required sample size will also depend on the split between the treatment and the control group. 
+This is specified as the nratio = treatment size/control size.
+This value is 1 if there are equal number of people in both groups and it increases as we allocate a higher proportion 
+to the treatment group. For instance, if the control group size is 1/2 of the treatment group, the nratio is 2.
+
+{phang}{bf:{stata global nratio= 1}}{p_end} 
+
+We use the in-built {stata `"help power"':power} command in STATA (STATA 13 or higher). Take some time to read the help documentation.
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, power($power) alpha($alpha) nratio($nratio) sd($baseline_sd) table}}{p_end}
+
+{p} The command outputs the the sample size given the parameters. "delta" is the effect size. 
+"m1" and "m2" are the control and treatment means respectively
+
+{phang}{bf:{stata global samplesize = r(N)}}{p_end}
+{phang}{bf:{stata global effect = round($effect, 0.001)}}{p_end}
+
+
+To summarize our results: 
+
+{phang}{bf:{stata di as error "The minimum sample size needed is $samplesize to detect an effect size of $effect with a probability of $power if the effect is true and the ratio of units in treatment and control is $nratio"}}{p_end}
+
+{p}
+{bf: Minimum effect size given the sample size}
+
+{p} 
+Say, instead, we knew the sample size and wanted to calculate the Minimum Detectable Effect Size (MDE).
+
+{p} First, specify the sample size: 
+
+{phang}{bf:{stata global N = 2000}}{p_end}
+
+Then use the {stata `"help power"':power} command to calculate the minimum effect we can detect with 80 percent probability:
+
+{phang}{bf:{stata power twomeans $baseline_mean, power($power) alpha($alpha) nratio($nratio) n($N) sd($baseline_sd) table}}{p_end}
+
+{phang}{bf:{stata global mde = round(r(delta),0.01)}}{p_end}
+
+{phang}{bf:{stata di as error "The MDE is $mde given a sample size of $N, ratio of units in treatment and control of $nratio, and power $power"}} {p_end}
+
+
+{p}{bf:Some other questions to answer before calculating power:}
+
+{p}- How do the sample size and MDE change when the different components of the power command change ?
+
+{p}- Will our main specification include controls?
+
+{p}- Do we expect only part of the treatment group to take-up the intervention? 
+
+{p}- Will this study be cluster randomized?
+
+
+{p}We'll address each of these questions one at a time to see how they affect power.
+
+
+{hline}{marker intuition}
+
+{pstd}{bf:2. Relationship between power and its components}
+
+{hline}
+
+{p}
+First, we again set the power and alpha values:
+
+{phang}{bf:{stata global power = 0.8}}{p_end}
+{phang}{bf:{stata global alpha= 0.05}}{p_end}
+
+{p}
+We also set the baseline mean and the baseline sd as before:
+
+{phang}{bf:{stata sum pre_totnorm}}{p_end}
+{phang}{bf:{stata global baseline_sd = r(sd)}}{p_end}
+{phang}{bf:{stata global baseline_mean = r(mean)}}{p_end}
+
+{p} We anticipate that the effect will be 1/3 of the standard deviations and our sample is equally split between the treatment and control groups.
+
+{phang}{bf:{stata global effect = $baseline_sd/3}}{p_end}
+{phang}{bf:{stata global treat = $baseline_mean+$effect}}{p_end}
+{phang}{bf:{stata global nratio= 1}}{p_end} 
+
+{p} The required sample size can be calculated using the {stata `"help power"':power} command as before:
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, power($power) alpha($alpha) nratio($nratio) sd($baseline_sd) table}}{p_end}
+
+{p}Now, let's get a better intuition on how the sample size changes when we change different components of power:
+
+
+{p} {bf: Minimum required sample size and the minimum detectable effect}
+
+{p}Say our anticipated effect size is smaller than originally thought; how much larger would we need to make the sample in order to still pick up an effect?
+
+{p}Let's try an effect size that is half as large.
+
+{phang}{bf:{stata global new_effect = $effect/2}}{p_end}
+{phang}{bf:{stata global new_treat = $baseline_mean + $new_effect}}{p_end}
+
+{p} The required sample size for the same power can be calculated as:
+
+{phang}{bf:{stata power twomeans $baseline_mean  $new_treat, power($power) alpha($alpha) nratio($nratio) sd($baseline_sd) table}}{p_end}
+
+{p}Observation: The minimum sample required is four times as large.
+
+{p}Let's try an effect size that is a third of the original:
+
+{phang}{bf:{stata global new_effect2 = $effect/3}}{p_end}
+{phang}{bf:{stata global new_treat2 = $baseline_mean + $new_effect2}}{p_end}
+{phang}{bf:{stata power twomeans $baseline_mean $new_treat2, power(.8) sd($baseline_sd) table}}{p_end}
+
+{p}Observation: The minimum sample required is now nine times as large.
+
+{p}{bf: Remember: If our MDE decreases by a factor of X, the required sample size increases by the square of X!}
+
+{p} You can use the power command to compare different sample sizes required to detect different effect sizes. 
+We specify a range of possible effects and calculate the required sample size. 
+This same syntax can be used to add a range of values to any parameter in the power command to compare the results: 
+
+{phang}{bf:{stata power twomeans $baseline_mean, power($power) alpha($alpha) nratio($nratio) sd($baseline_sd) diff(0.1(0.15)2) table}}{p_end}
+
+As we can see from the table, we require a larger sample size to detect a smaller effect with the same power, 
+given all other factors remain constant. 
+
+{p} {bf: Minimum required sample size and the standard deviation of the outcome}
+
+{p} Similarly we can observe how the required sample size changes when the standard deviation of the outcome changes:
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, power($power) alpha($alpha) nratio($nratio) sd(0.5(0.1)2) table}}{p_end}
+
+{p} Question 2.1. How does the minimum required sample size change as the standard deviation increases? Why? {view "Power_exercise.smcl##answers":answer here}
+
+{p} {bf: Minimum required sample size and the sample split}
+
+{p} Let's see now how the required sample size changes as we change the sample split between the treatment and the control. 
+
+We can again use the power command to specify a range of possible sample allocation ratios in the nratio option:
+
+{phang}{bf:{stata power twomeans $baseline_mean  $treat, power($power) alpha($alpha) nratio(1.5(-0.2)0.5) sd($baseline_sd) table}}{p_end}
+
+{p} Question 2.2. How does the sample size change when we allocate more individuals to the treatment group compared to the control group? Why? {view "Power_exercise.smcl##answers":answer here}
+
+{hline}{marker controls}
+
+{pstd}{bf:3. Parametric power calculation with controls}
+
+{hline}
+
+{p}Now, say we plan to control for baseline covariates in our main specification. 
+The inclusion of these controls will improve our power, since they explain some of the 
+variance in our outcome. For example, including data on baseline characteristics like sex or age may explain
+some of the variance in the outcome. Note that we may not need/want to include covariates if the treatment and the control are
+randomly allocated.
+
+{p}To see how potential controls affect power, we would ideally have access to a sample data set (e.g. historical or pilot data). 
+With these data, we would want to regress the outcome on the covariates to evaluate how much variance is 
+explained by the set of covariates we plan to include. 
+
+{p}From this regression, we are interested in the residual standard deviation of 
+the outcome variables, or the variance of the outcome that is NOT explained 
+by controls. This residual SD becomes the new SD we include in our parametric power
+calculations. 
+
+{hline}
+
+{p}Using Balsakhi data, this would be as follows:
+
+We will specify the parameters and the baseline attributes as above.
+
+{phang}{bf:{stata global power = 0.8}}{p_end}
+{phang}{bf:{stata global alpha= 0.05}}{p_end}
+
+{phang}{bf:{stata sum pre_totnorm}}{p_end}
+{phang}{bf:{stata global baseline_sd = r(sd)}}{p_end}
+{phang}{bf:{stata global baseline_mean = r(mean)}}{p_end}
+
+{phang}{bf:{stata global effect_cov = $baseline_sd/3}}{p_end}
+{phang}{bf:{stata global treat = $baseline_mean+ $effect_cov}}{p_end}
+{phang}{bf:{stata global nratio= 1}}{p_end} 
+
+{p} Then we will specify the regression of the outcome on the covariates and calculate the amount of standard deviation of the outcome
+not explained by the covariates. This can be calculated as the standard deviation of the residuals from the regression. 
+
+{phang}{bf:{stata global covariates "pre_math pre_verb"}}{p_end}	
+{phang}{bf:{stata reg pre_totnorm $covariates}}{p_end}
+{phang}{bf:{stata predict res, res}}{p_end}
+{phang}{bf:{stata sum res}}{p_end}
+{phang}{bf:{stata global res_sd = r(sd)}}{p_end}
+
+{p}If we knew the effect size and wanted to know the minimum sample size needed to detect the effect with 80 percent probability. 
+To account for the controls, we will use the residual standard deviation. 
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, power($power) alpha($alpha) nratio($nratio) sd($res_sd) table}}{p_end}
+
+{phang}{bf:{stata global effect_cov = round($effect_cov,0.0001)}}{p_end}
+{phang}{bf:{stata global samplesize_cov = r(N)}}{p_end}
+	
+{phang}{bf:{stata `"di as error "The minimum sample size needed is $samplesize_cov to detect an effect of $effect_cov with a probability of $power if the effect is true if the residual standard deviation is $res_sd after accounting for covariates: $covariates""'}}{p_end}
+
+
+{p}The standard deviation of the residuals is the excess standard deviation that is not explained by the previous scores. 
+Since a large fraction of the standard deviation is explained by the covariates, we only need to account for the residual standard deviation.
+
+{p}If we knew the sample size and wanted to calculate the effect size:
+
+{phang}{bf:{stata global N_cov = 2000}}{p_end}
+
+{phang}{bf:{stata `"power twomeans $baseline_mean, power($power) alpha($alpha) nratio($nratio) n($N_cov) sd($res_sd) table"'}}{p_end}
+
+{phang}{bf:{stata global mde_cov= round(r(delta),0.0001)}}{p_end}
+
+{phang}{bf:{stata di as error "The MDE is $mde_cov with covariates- $covariates"}}{p_end}
+
+
+{p} Questions:
+
+{p}3.1. What percent of the variance of study period test scores is explained by the covariates, pre_verb and pre_math? (Hint: Look at the R^2 statistic of the regression.)
+
+{p}3.2. How does this affect our sample size (compared to not including controls)?
+
+{p}3.3. How about our MDE? {view "Power_exercise.smcl##answers":answers here}
+
+
+{hline}{marker partial}
+
+{pstd}{bf:EXAMPLE 4: Parametric power calculation with partial take-up}
+
+{hline}
+
+{p}In randomized designs, it is common that there is partial take-up of the intervention. 
+For example, in the {browse "http://nber.org/oregon/":Oregon Health Insurance Experiment}, the offer to apply for 
+health insurance was associated with only a 25 percentage point increase in 
+take-up of health insurance. When take-up is not 100 percent, researchers are often interested in 
+the answers to second stage questions, such as what the {it:average} effect of 
+becoming insured is on health care utilization.
+
+{p}Below, we provide code that adjusts Stata's power to take into account that only
+some individuals in the treatment group take up the intervention.
+
+{p}The measure of take-up that we care about is "effective take-up", or the 
+percentage of individuals in the treatment group that takes up the intervention
+MINUS the percentage of individuals in the control group that takes up.
+
+
+{p} We first specify the parameters, baseline mean and standard deviation and expected effect as specified above:
+
+{phang}{bf:{stata global power = 0.8}}{p_end}
+{phang}{bf:{stata global alpha= 0.05}}{p_end}
+{phang}{bf:{stata global nratio= 1}}{p_end} 
+
+{phang}{bf:{stata sum pre_totnorm}}{p_end}
+{phang}{bf:{stata global baseline_sd = r(sd)}}{p_end}
+{phang}{bf:{stata global baseline_mean = r(mean)}}{p_end}
+
+{phang}{bf:{stata global effect = $baseline_sd/3}}{p_end}
+
+{p}Let's say we expect 90% of the treatment group to take up the treatment, and 10% to do so in the control group. 
+We then have an effective take-up rate of 80%:
+
+{phang}{bf:{stata `"global treat_tu = .9"'}}{p_end}
+{phang}{bf:{stata `"global control_tu = .1"'}}{p_end}
+{phang}{bf:{stata `"global effective_tu = .9 - .1"'}}{p_end}
+
+
+{p}Now we calculate the adjusted MDE by multiplying the unadjusted effect size times the effective take-up rate:
+
+{phang}{bf:{stata global effect_tu = $effect*$effective_tu}}{p_end}
+
+{p}If we want to estimate sample size, we follow a similar procedure:
+
+{phang}{bf:{stata `"global treat_partial = $baseline_mean + $effect_tu"'}}{p_end}
+{phang}{bf:{stata `"power twomeans $baseline_mean $treat_partial, power($power) alpha($alpha) nratio($nratio) sd($res_sd) table"'}}{p_end}
+
+{phang}{bf:{stata global samplesize_tu = r(N)}}{p_end}
+{phang}{bf:{stata global effect_tu = round($effect_tu,0.001)}}{p_end}
+	
+{phang}{bf:{stata di as error "A minimum sample size of $samplesize_tu is needed to detect an effect of $effect_tu with a probability of $power if the effect is true and the ratio of units in treatment and control is $nratio"}}{p_end}
+
+{p}Note that unlike with the MDE, partial take-up affects sample size quadratically; we divide estimates of sample size by the {it:square} of the effective take-up rate!
+
+{hline}{marker summary}
+
+{pstd}{bf: 5. Overview of how MDE and sample size change as we add covariates and take-up changes (optional)}
+
+{hline}
+
+{p} *Note: This module calls on globals in modules 1-4, so you'll have to run them too
+
+{p}{bf:Part 1. How sample size changes when we change the design} 
+
+{phang}{bf:{stata matrix input sample_size = (1,0,$effect,$samplesize, $baseline_sd \ 1,2,$effect_cov,$samplesize_cov, $res_sd \ $eff_tu,0,$effect_tu,$samplesize_tu, $baseline_sd)}}{p_end}
+{phang}{bf:{stata matrix colnames sample_size = take_up_rate number_covariates effect_given_take_up sample_size standard_dev}}{p_end}
+{phang}{bf:{stata matrix list sample_size}}{p_end}
+
+{p}{bf: Part 2. How MDE changes when we add more covariates}
+
+{phang}{bf:{stata matrix input mde_matrix = (0,$mde,$N, $baseline_sd\ $num_covariates,$mde_cov,$N_cov, $res_sd)}}{p_end}
+{phang}{bf:{stata matrix colnames mde_matrix = number_covariates MDE N standard_dev}}{p_end}
+{phang}{bf:{stata matrix list mde_matrix}}{p_end}
+
+
+{hline}{marker cluster}
+
+{pstd}{bf:6. Parametric power calculation for cluster RCTs (optional)}
+
+{hline}
+
+{p}Many designs randomize at the group level instead of at the individual level. For such designs, we need to adjust our power calculations so that they incorporate 
+the fact that individuals within the same group may be subject to similar shocks, and thereby have correlated outcomes. Duflo et al. {browse "http://economics.mit.edu/files/806": "Using Randomization in Development Economics Research: A Toolkit."}
+presents a modified parametric approach, which takes into account the intra-cluster correlation (ICC) that arises from randomization at the group level.
+
+{p}We can think of cluster RCTs as follows: 
+
+{p}- When ICC = 0, then our N is effectively the number of individuals in the study. 
+
+{p}- When ICC = 1, then our N is effectively just the number of clusters.
+
+{p}- Usually the ICC lies somewhere between 0 and 1, requiring that we adjust our power calculations to account for this.
+	
+{p}Below we adjust Stata's power estimates based on Duflo et al.'s model. 
+
+{p}Note: This model assumes that all clusters in a treatment arm are of the same size and have the same number of individuals. 
+It's usually okay if this is violated in reality, but you would not want to use these adjustments if groups are 
+dramatically different in size (e.g. group one has 10 individuals, group two has 1,000 individuals.) More on this 
+model is explained in Duflo et al.'s article {browse "http://economics.mit.edu/files/806": "Using Randomization in Development Economics Research: A Toolkit."}
+
+
+{p} First, we specify the parameters as before:
+
+{phang}{bf:{stata global power = 0.8}}{p_end}
+{phang}{bf:{stata global alpha= 0.05}}{p_end}
+
+{phang}{bf:{stata sum pre_totnorm}}{p_end}
+{phang}{bf:{stata global baseline_sd = r(sd)}}{p_end}
+{phang}{bf:{stata global baseline_mean = r(mean)}}{p_end}
+
+{phang}{bf:{stata global nratio= 1}}{p_end} 
+
+Now, let's calculate the intra-cluster correlation (ICC) which measures how 
+correlated the error terms of individuals in the same cluster are. The Balsakhi data is clustered using the "divid" variable. The loneway command reports 
+intra-cluster correlation, so we can use it to find our ICC: 
+
+{phang}{bf:{stata `"loneway pre_totnorm divid"'}}{p_end}
+{phang}{bf:{stata `"global rho = r(rho)"'}}{p_end}
+
+{hline}
+
+{p}{bf:Part 1. Calculating MDE}
+
+{p}First, we will calculate the minimum effect that the study is powered to detect, given the number of clusters and the cluster size. 
+
+"k" refers to the number of clusters
+"m" refers to the cluster size
+
+Let's specify the number of clusters in the control group
+
+{phang}{bf:{stata `"global num_clusters_control = 193"'}}{p_end}
+
+and the ratio of number of clusters in the treatment to the control group.
+
+{phang}{bf:{stata `"global kratio = 1"'}}{p_end}
+
+{p}Then we specify the size of clusters in the control group (as documented in the Balsaki experiment),
+
+{phang}{bf:{stata `"global cluster_size_control = 50"'}}{p_end}
+
+and the ratio of cluster size in the treatment to the control group.
+
+{phang}{bf:{stata `"global mratio = 1"'}}{p_end}
+
+{p} We can use the {stata `"help power twomeans cluster"':power, cluster} command to calculate the minimum effect size the study can detect with 80 percent probability:
+
+{phang}{bf:{stata power twomeans $baseline_mean, cluster k1($num_clusters_control) kratio($kratio) mratio($mratio) m1($cluster_size_control) power($power) sd($baseline_sd) rho($rho)  alpha($alpha) table}}{p_end}
+
+{p} The command outputs the the minimum effect size given the parameters. "delta" is the calculated effect size. "m1" and "m2" are the control and treatment means
+respectively. "K1" and "K2" are the number of clusters in the control and the treatment groups respectively. Similarly, "M1" and "M2" are the cluster sizes. 
+
+{phang}{bf:{stata global mde_cluster = round(r(delta),0.0001)}}{p_end}
+
+{p}The number of clusters in the treatment and their size can be calculated using the specified parameters:
+
+{phang}{bf:{stata `"global num_clusters_treat = $num_clusters_control*$kratio"'}}{p_end}
+{phang}{bf:{stata `"global cluster_size_treat = $cluster_size_control*$mratio"'}}{p_end}
+
+{p} The total number of clusters and units of observation:
+
+{phang}{bf:{stata `"global total_clusters = $num_clusters_control+$num_clusters_treat"'}}{p_end}
+{phang}{bf:{stata `"global total_N = ($cluster_size_treat*$num_clusters_treat)+($cluster_size_control*$num_clusters_control)"'}}{p_end}
+
+{phang}{bf:{stata di as error "The MDE is $mde_cluster"}}{p_end}
+
+{hline}
+
+{p}{bf:Part 2. Number of clusters given cluster size and the effect size}
+
+{p} First, we specify the size of clusters in the control group (as documented in the Balsaki experiment).
+
+{phang}{bf:{stata `"global cluster_size_control = 50"'}}{p_end}
+
+and the ratio of cluster size in the treatment to the control group
+
+{phang}{bf:{stata `"global mratio = 1"'}}{p_end}
+
+{p} We also specify the effect size and the treatment mean as before:
+
+{phang}{bf:{stata global effect = $baseline_sd/3}}{p_end}
+{phang}{bf:{stata global treat = $baseline_mean+$effect}}{p_end}
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, cluster mratio($mratio) m1($cluster_size_control) power($power) sd($baseline_sd) rho($rho)  alpha($alpha) table}}{p_end}
+
+{phang}{bf:{stata global n_clus_t = r(K2)}}{p_end}
+{phang}{bf:{stata global n_clus_c = r(K1)}}{p_end}
+	
+{phang}{bf:{stata di as error "A minimum of $n_clus_c control clusters and $n_clus_t treatment clusters is needed to detect an effect of $effect with a probability of $power if the effect is true"}}{p_end}
+
+{hline}
+
+{p}{bf:Part 3. Cluster size given the number of clusters and effect size}
+
+{p} First, we specify the number of clusters in the control group (as documented in the Balsaki experiment).
+
+{phang}{bf:{stata `"global num_clusters_control =50"'}}{p_end}
+
+and the ratio of the number of clusters in the treatment to the control group
+
+{phang}{bf:{stata `"global kratio = 1"'}}{p_end}
+
+{p} We also specify the effect size and the treatment mean as before:
+
+{phang}{bf:{stata global effect = $baseline_sd/3}}{p_end}
+{phang}{bf:{stata global treat = $baseline_mean+$effect}}{p_end}
+
+{phang}{bf:{stata power twomeans $baseline_mean $treat, cluster kratio($kratio) k1($num_clusters_control) power($power) sd($baseline_sd) rho($rho)  alpha($alpha) table}}{p_end}
+	
+{p} Computed cluster size:
+
+{phang}{bf:{stata global clus_size_t = r(M2)}}{p_end}
+{phang}{bf:{stata global clus_size_c = r(M1)}}{p_end}
+
+{phang}{bf:{stata di as error "The minimum size of each cluster is $clus_size_c in the control and $clus_size_t in the treatment to detect an effect of $effect with a probability of $power if the effect is true"}}{p_end}
+
+
+{p} Questions:
+
+{p}6.1. Why do we have to adjust power for clustering when running a cluster RCT?
+
+{p}6.2. Assuming ICC>0, does adding a new cluster of 5 individuals or adding 5 
+individuals to already-existing clusters give us more power to detect effects? {view "Power_exercise.smcl##answers":answers here}
+
+{hline}{marker resources}
+
+{pstd}{bf:7. Resources}
+
+{hline}
+
+{p} - J-PAL's Sample size and power calculations code. {browse "https://github.com/J-PAL/Sample_Size_and_Power": "Sample size and power calculations code."}
+
+{p} - J-PAL's Research Resource on {browse "https://www.povertyactionlab.org/resource/power-calculations": "Power calculations"}
+
+{p} - McConnell, Brendon, and Marcos Vera-Hernandez. 2015. "{browse "https://doi.org/10.1920/wp.ifs.2015.1517": "Going beyond simple sample size calculations: a practitioner's guide."} 
+IFS Working Paper W15/17. 
+
+{p} - EGAP's {browse "https://egap.shinyapps.io/power-app/": "Power calculator"}
+
+{p}- Duflo, Esther, Rachel Glennerster, and Michael Kremer. 2007. {browse "https://economics.mit.edu/files/806": “Using Randomization in Development Economics Research: A Toolkit.”}
+Handbook of Development Economics, 3895-3962.
+
+{hline}{marker answers}
+
+{pstd}{bf:8. Answer Key}
+
+{hline}
+
+{p} 2.1. The required sample size increases as the standard deviation increases. If the outcome variable has high variation across the sample, 
+we will need a higher number of units for a representative sample. 
+
+{p} 2.2. The required sample size increases as the ratio of the sample allocated to the treatment group vs the control group gets farther from 50/50. How sample size changes as the ratio allocated to the treatment group increases will depend on whether this moves us closer to or away from a 50/50 split.
+
+{p} 3.1. About 86 percent of the variation in pre_totnorm is explained by pre_verb and pre_math
+
+{p} 3.2. Including controls reduces sample size by about 85 percent.
+
+{p} 3.3. Reduces MDE to a lesser extent (~63%).
+
+
+{p} 6.1. Assignment is only random at the cluster level; thus we must cluster our standard errors in our main specification. To this end, our power calculations must also take this into account, 
+since, by clustering in our main specification, we will lose all precision gained from intra-cluster correlation in outcomes.
+	
+{p} 6.2. Adding 5 individuals to existing clusters will increase power by a lesser amount. In the limiting case of ICC=1, adding 5 individuals to previous clusters would have no effect on
+power, while adding 5 individuals in a new cluster would increase our effective N by 1.
+
+

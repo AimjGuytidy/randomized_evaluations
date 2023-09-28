@@ -1,0 +1,1 @@
+Unzip the folder and make sure to extract all the contents. Once that is done, double click on the .smcl file "Power_exercise.smcl" and follow the instructions in the .smcl file.
